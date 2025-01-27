@@ -3,26 +3,15 @@ from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_tok
 
 from application.services.ValidationService import ValidationService
 from application.src.repositories.TransactionRepository import TransactionRepository
+from application.src.repositories.ChargeRepository import ChargeRepository
+from application.services.ApiResource import ApiResource
+from application.src.repositories.UserRepository import UserRepository
 
 transaction = Blueprint('transaction', __name__, url_prefix='/transaction')
 
 @transaction.route('/', methods=('GET', 'POST'))
+@jwt_required()
 def retrieve_transactions():
     if request.method == 'POST':
-        print("ran the application")
-    
-    if request.method == "GET":
-        print("we found it")
-
-@transaction.route('/user-transaction', methods=('GET', 'POST'))
-def retrieve_single_user_transactions():
-    if request.method == 'POST':
-        print("ran the application")
-    
-    if request.method == "GET":
-        print("we found it")
-
-@transaction.route('/banks', methods=('GET', 'POST'))
-def banks_transactions():
-    if request.method == "GET":
-        print("banks")
+        charge= ChargeRepository.get_latest_charge()
+        return ApiResource.response(data={"charge": charge}, message="Charge retrieved")

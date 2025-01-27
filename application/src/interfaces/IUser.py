@@ -11,7 +11,7 @@ class IUser(ABC):
         return NotImplemented()
     
     @abstractmethod
-    def confimPin(self, code):
+    def confirmPin(self, code):
         return NotImplemented()
     
     @abstractmethod

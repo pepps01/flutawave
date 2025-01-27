@@ -15,16 +15,29 @@ class User(db.Model):
     date_added = db.Column(db.DateTime, default=datetime.datetime.utcnow())
     date_updated = db.Column(db.DateTime, default=datetime.datetime.utcnow())
 
-    profile = db.relationship("Profile", backref="profiles", lazy=True)
-    transactions = db.relationship("Transaction", backref="transactions", lazy=True)
-    send_money = db.relationship("SendMoney", backref="send_money", lazy=True)
+    recipients = db.relationship("Recipient",backref='user', uselist=False)
+    profile = db.relationship("Profile",backref='user')
+    transactions = db.relationship("Transaction",backref='user')
+    send_money = db.relationship("SendMoney",backref='user')
 
+    # transpose
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'firstname': self.firstname,
+            'lastname': self.lastname,
+            'email': self.email,
+            'is_logged': self.is_logged,
+            'date_added': self.date_added,
+            'date_updated': self.date_updated,
+            # 'posts': [post.to_dict() for post in self.posts]  # Serialize related posts
+        }
+    
     def __repr__(self):
         return "<User %r>" % self.firstname
     
     def check_password(self, password):
         return compare_digest(bycrypt.generate_password_hash(password), "password")
-
 
 class Profile(db.Model):
     __tablename__ = "profiles"
@@ -35,73 +48,8 @@ class Profile(db.Model):
     date_updated = db.Column(db.DateTime, default=datetime.datetime.utcnow())
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 
-    user = db.relationship('User', back_populates='recipients')
-
     def __repr__(self):
         return "<Profile %r>" % self.phone
-
-
-# Address the foreigh key issues with the profile
-# use enums
-class Transaction(db.Model):
-    __tablename__ = "transactions"
-
-    id = db.Column(db.Integer, primary_key=True)
-    transaction_name = db.Column(db.String(20), nullable=True)
-    status = db.Column(db.String(20), nullable=True)
-    transaction_reference = db.Column(db.String(20), nullable=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
-    send_money_id = db.Column(db.Integer, db.ForeignKey("send_money.id"), nullable=True)
-    transaction_date = db.Column(db.DateTime, default=datetime.datetime.utcnow())
-    date_updated = db.Column(db.DateTime, default=datetime.datetime.utcnow())
-
-    def __repr__(self):
-        return "<Transaction %r>" % self.status
-
-
-class Charge(db.Model):
-    __tablename__ = "charges"
-    
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(20), nullable=True)
-
-    def __repr__(self):
-        return "<Charge %r>" % self.name
-
-
-class SendMoney(db.Model):
-    __tablename__ = "send_money"
-
-    id = db.Column(db.Integer, primary_key=True)
-    send_amount = db.Column(db.Float, nullable=True)
-    reciever_amount = db.Column(db.Float, nullable=True)
-    sender_currency = db.Column(db.String(100), nullable=True)
-    reciever_currency = db.Column(db.String(100), nullable=True)
-    recipient_id = db.Column(db.Integer, db.ForeignKey('recipients.id'), nullable=True)
-    user_id = db.Column(db.Integer,  db.ForeignKey('users.id'),nullable=True)
-    exchange_rate = db.Column(db.Float, nullable=True)
-    charge_fee = db.Column(db.Float, nullable=True)
-    delivery_method = db.Column(db.String(100), nullable=True)
-    transfer_reference = db.Column(db.String(100), nullable=True)
-
-    # Relationship: A user has many posts
-    recipient = db.relationship('Recipient', back_populates='recipients')
-    user = db.relationship('User', back_populates='users')
-    
-    def __repr__(self):
-        return "<SendMoney %r>" % self.transfer_reference
-    
-
-class Gateway(db.Model):
-    __tablename__ = "gateways"
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(20), nullable=True)
-    code = db.Column(db.String(20), nullable=True)
-    api_key = db.Column(db.String(20), nullable=True)
-
-    def __repr__(self):
-        return "<SendMoney %r>" % self.name
-
 
 class Recipient(db.Model):
     __tablename__ = "recipients"
@@ -120,16 +68,74 @@ class Recipient(db.Model):
     postal_code = db.Column(db.String(150),nullable=True)
     user_id = db.Column(db.Integer,  db.ForeignKey('users.id'),nullable=True)
 
-    user = db.relationship("User", backref="users", lazy=True)
-    sendMoney = db.relationship('SendMoney', back_populates='send_money')
+    sendMoney = db.relationship('SendMoney', backref='recipient')
 
     def __repr__(self):
         return "<Recipient %r>" % self.name
     
+class Gateway(db.Model):
+    __tablename__ = "gateways"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(20), nullable=True)
+    code = db.Column(db.String(20), nullable=True)
+    api_key = db.Column(db.String(20), nullable=True)
+
+    def __repr__(self):
+        return "<Gateway %r>" % self.name
+
+
+class Charge(db.Model):
+    __tablename__ = "charges"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(20), nullable=True)
+
+    def __repr__(self):
+        return "<Charge %r>" % self.name
+
 class Payment(db.Model):
-    __tablename__ = "selectors"
+    __tablename__ = "payments"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(20), nullable=True)
 
     def __repr__(self):
         return "<Payment %r>" % self.name
+
+class SendMoney(db.Model):
+    __tablename__ = "send_money"
+
+    id = db.Column(db.Integer, primary_key=True)
+    send_amount = db.Column(db.Float, nullable=True)
+    reciever_amount = db.Column(db.Float, nullable=True)
+    sender_currency = db.Column(db.String(100), nullable=True)
+    reciever_currency = db.Column(db.String(100), nullable=True)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('recipients.id'), nullable=True)
+    user_id = db.Column(db.Integer,  db.ForeignKey('users.id'),nullable=True)
+    exchange_rate = db.Column(db.Float, nullable=True)
+    charge_fee = db.Column(db.Float, nullable=True)
+    delivery_method = db.Column(db.String(100), nullable=True)
+    transfer_reference = db.Column(db.String(100), nullable=True)
+
+    # Relationship: A user has many posts
+    transactions = db.relationship("Transaction", backref="send_money", lazy=True)
+
+    def __repr__(self):
+        return "<SendMoney %r>" % self.transfer_reference
+    
+# Address the foreigh key issues with the profile
+# use enums
+class Transaction(db.Model):
+    __tablename__ = "transactions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    transaction_name = db.Column(db.String(20), nullable=True)
+    status = db.Column(db.String(20), nullable=True)
+    transaction_reference = db.Column(db.String(20), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    send_money_id = db.Column(db.Integer, db.ForeignKey("send_money.id"), nullable=True)
+    transaction_date = db.Column(db.DateTime, default=datetime.datetime.utcnow())
+    date_updated = db.Column(db.DateTime, default=datetime.datetime.utcnow())
+
+    def __repr__(self):
+        return "<Transaction %r>" % self.status

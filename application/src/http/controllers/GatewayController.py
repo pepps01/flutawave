@@ -1,6 +1,8 @@
 from flask import (Blueprint,  request)
 from application.services.ApiResource import ApiResource
 from werkzeug.security import check_password_hash, generate_password_hash
+from application import jwt_required
+from application.src.repositories.UserRepository import UserRepository
 
 gateway = Blueprint('gateway', __name__, url_prefix='/')
 
